@@ -1,0 +1,63 @@
+import { Geist } from "next/font/google";
+import Link from "next/link";
+import "./globals.css";
+
+const geist = Geist({ subsets: ["latin"] });
+
+export const metadata = {
+  title: "GameHub",
+  description: "Play unblocked games",
+};
+
+export default function RootLayout({ children }) {
+  return (
+    <html lang="en">
+      <body className={geist.className} style={{ margin: 0, background: "#0a0a0f", color: "#fff", minHeight: "100vh" }}>
+        <nav style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          padding: "0 2rem",
+          height: "60px",
+          background: "rgba(10,10,20,0.95)",
+          borderBottom: "1px solid #1e1e2e",
+          position: "sticky",
+          top: 0,
+          zIndex: 100,
+          backdropFilter: "blur(12px)",
+        }}>
+          <Link href="/" style={{ textDecoration: "none" }}>
+            <span style={{
+              fontSize: "1.5rem",
+              fontWeight: 800,
+              background: "linear-gradient(90deg, #7c3aed, #ec4899)",
+              WebkitBackgroundClip: "text",
+              WebkitTextFillColor: "transparent",
+              letterSpacing: "-0.5px",
+            }}>GameHub</span>
+          </Link>
+          <div style={{ display: "flex", gap: "0.5rem" }}>
+            {[
+              { label: "🎮 Games", href: "/games" },
+              { label: "🌐 Proxy", href: "/proxy" },
+            ].map(({ label, href }) => (
+              <Link key={href} href={href} style={{
+                textDecoration: "none",
+                color: "#ccc",
+                padding: "0.4rem 1rem",
+                borderRadius: "8px",
+                fontSize: "0.9rem",
+                fontWeight: 500,
+                transition: "all 0.2s",
+              }}
+              onMouseEnter={e => { e.target.style.background = "#1e1e2e"; e.target.style.color = "#fff"; }}
+              onMouseLeave={e => { e.target.style.background = "transparent"; e.target.style.color = "#ccc"; }}
+              >{label}</Link>
+            ))}
+          </div>
+        </nav>
+        {children}
+      </body>
+    </html>
+  );
+}
