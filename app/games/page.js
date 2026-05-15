@@ -24,11 +24,14 @@ const GAMES = [
     tags: ["arcade", "skill"],
   },
   {
-    id: "dancefire",
-    name: "Dance of Fire & Ice",
-    image: "/Thumbnails/dance-of-fire-and-ice.png",
-    url: "https://htmlxm.github.io/h8/a-dance-of-fire-and-ice/",
-    tags: ["rhythm", "music", "hard"],
+   
+  id: "dancefire",
+  name: "Dance of Fire & Ice",
+  image: "/Thumbnails/dance-of-fire-and-ice.png",
+  url: "https://htmlxm.github.io/h8/a-dance-of-fire-and-ice/",
+  tags: ["rhythm", "music", "hard"],
+  scale: 1.5,
+
   },
   {
     id: "geodash",
@@ -109,11 +112,19 @@ export default function GamesPage() {
           </div>
         </div>
         <iframe
-          id="game-iframe"
-          src={activeGame.url}
-          style={{ flex: 1, border: "none", width: "100%", display: "block" }}
-          allowFullScreen
-        />
+  id="game-iframe"
+  src={activeGame.url}
+  style={{ 
+    flex: 1, 
+    border: "none", 
+    width: activeGame.scale ? `${activeGame.scale * 100}%` : "100%",
+    height: activeGame.scale ? `${activeGame.scale * 100}%` : "100%",
+    display: "block",
+    transform: activeGame.scale ? `scale(${1/activeGame.scale})` : "none",
+    transformOrigin: "top left",
+  }}
+  allowFullScreen
+/>
       </div>
     );
   }
