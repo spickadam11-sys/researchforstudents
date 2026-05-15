@@ -19,7 +19,7 @@ const GAMES = [
   {
     id: "coreball",
     name: "Core Ball",
-    image: "/Thumbnails/core-ball_png.png",
+    image: "/Thumbnails/coreball.png",
     url: "https://petezahgames.com/storage/ag/arsenic/core-ball/",
     tags: ["arcade", "skill"],
   },
