@@ -1,24 +1,30 @@
+"use client";
 import "./globals.css";
-
-export const metadata = {
-  title: "GameHub",
-  description: "Unblocked games, proxy, and more.",
-};
+import { useEffect } from "react";
 
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
       <head>
+        <title>ResearchforStudents</title>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="true" />
         <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
       </head>
       <body>
+        <TitleSpoof />
         <Navbar />
         {children}
       </body>
     </html>
   );
+}
+
+function TitleSpoof() {
+  useEffect(() => {
+    document.title = "ResearchforStudents";
+  }, []);
+  return null;
 }
 
 function Navbar() {
@@ -41,7 +47,7 @@ function Navbar() {
           letterSpacing: "-0.5px",
           color: "var(--accent)",
           textShadow: "0 0 20px rgba(0,229,255,0.4)",
-        }}>GAME<span style={{ color: "var(--text)" }}>HUB</span></span>
+        }}>RESEARCH<span style={{ color: "var(--text)" }}>forstudents</span></span>
       </a>
 
       <div style={{ display: "flex", gap: "4px" }}>

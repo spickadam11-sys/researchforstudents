@@ -56,7 +56,7 @@ const GAMES = [
 function openAboutBlank(url) {
   const win = window.open("", "_blank");
   if (!win) { alert("Allow pop-ups for this site first."); return; }
-  win.document.write(`<!DOCTYPE html><html><head><title>Game</title>
+  win.document.write(`<!DOCTYPE html><html><head><title>about:blank</title>
 <style>*{margin:0;padding:0;box-sizing:border-box}body{background:#000;width:100vw;height:100vh;overflow:hidden}
 iframe{width:100%;height:100%;border:none;display:block}
 #x{position:fixed;top:10px;right:10px;z-index:9999;background:rgba(0,0,0,.7);color:#fff;

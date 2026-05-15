@@ -1,99 +1,106 @@
 "use client";
 import { useState, useRef } from "react";
 
-const PROXY_BASE = "https://your-worker.workers.dev/?url=";
+const PROXY_URL = "https://proxy-production-df6d.up.railway.app/";
 
 export default function ProxyPage() {
-  const [input, setInput] = useState("");
-  const [loaded, setLoaded] = useState(false);
-  const [currentUrl, setCurrentUrl] = useState("");
+  const [active, setActive] = useState(false);
   const iframeRef = useRef(null);
 
-  function buildProxyUrl(raw) {
-    const trimmed = raw.trim();
-    if (!trimmed) return null;
-    const isUrl = /^https?:\/\//i.test(trimmed) || /^[\w-]+\.\w{2,}/.test(trimmed);
-    if (isUrl) {
-      const full = /^https?:\/\//i.test(trimmed) ? trimmed : "https://" + trimmed;
-      return PROXY_BASE + encodeURIComponent(full);
-    }
-    return PROXY_BASE + encodeURIComponent("https://www.bing.com/search?q=" + encodeURIComponent(trimmed));
-  }
+  const quickLinks = [
+    { label: "Google", url: "https://google.com" },
+    { label: "YouTube", url: "https://youtube.com" },
+    { label: "Wikipedia", url: "https://wikipedia.org" },
+    { label: "Reddit", url: "https://reddit.com" },
+  ];
 
-  function handleGo(e) {
-    e?.preventDefault();
-    const url = buildProxyUrl(input);
-    if (!url || !iframeRef.current) return;
-    iframeRef.current.src = url;
-    setCurrentUrl(url);
-    setLoaded(false);
-  }
-
-  return (
-    <div style={{ minHeight: "calc(100vh - 58px)", display: "flex", flexDirection: "column" }}>
-      <div style={{
-        background: "var(--surface)",
-        borderBottom: "1px solid var(--border)",
-        padding: "12px 1.5rem",
-        display: "flex", flexDirection: "column", gap: "8px",
-      }}>
-        <form onSubmit={handleGo} style={{ display: "flex", gap: "8px", maxWidth: "700px" }}>
-          <input
-            type="text"
-            placeholder="Search the web or enter a URL..."
-            value={input}
-            onChange={e => setInput(e.target.value)}
+  if (active) {
+    return (
+      <div style={{ position: "fixed", inset: 0, background: "#000", zIndex: 500, display: "flex", flexDirection: "column" }}>
+        <div style={{
+          height: "44px",
+          background: "rgba(7,8,15,0.95)",
+          borderBottom: "1px solid var(--border)",
+          display: "flex", alignItems: "center",
+          padding: "0 1rem", gap: "8px", flexShrink: 0,
+        }}>
+          <span style={{ color: "var(--accent)", fontWeight: 700, fontSize: "0.9rem", fontFamily: "'Syne', sans-serif" }}>
+            Web Proxy
+          </span>
+          <div style={{ flex: 1 }} />
+          <button
+            onClick={() => iframeRef.current?.requestFullscreen?.()}
             style={{
-              flex: 1,
-              padding: "10px 14px",
-              background: "var(--surface2)",
+              background: "var(--surface2)", color: "var(--text)",
               border: "1px solid var(--border)",
-              borderRadius: "10px",
-              color: "var(--text)",
-              fontSize: "0.9rem",
-              outline: "none",
-              fontFamily: "'Syne', sans-serif",
-            }}
-            onFocus={e => e.target.style.borderColor = "var(--accent)"}
-            onBlur={e => e.target.style.borderColor = "var(--border)"}
-          />
-          <button type="submit" style={{
-            background: "var(--accent)", color: "#000",
-            border: "none", borderRadius: "10px",
-            padding: "10px 22px", fontWeight: 700,
-            fontSize: "0.9rem", cursor: "pointer", whiteSpace: "nowrap",
-          }}>Go →</button>
-        </form>
-      </div>
+              borderRadius: "7px", padding: "5px 12px",
+              cursor: "pointer", fontSize: "0.8rem", fontWeight: 600,
+            }}>
+            ⛶ Fullscreen
+          </button>
+          <button onClick={() => setActive(false)} style={{
+            background: "rgba(255,60,172,0.15)", color: "#ff3cac",
+            border: "1px solid rgba(255,60,172,0.3)",
+            borderRadius: "7px", padding: "5px 12px",
+            cursor: "pointer", fontSize: "0.8rem", fontWeight: 600,
+          }}>✕ Close</button>
+        </div>
 
-      <div style={{ flex: 1, position: "relative", background: "#000" }}>
-        {!currentUrl && (
-          <div style={{
-            position: "absolute", inset: 0,
-            display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-            gap: "12px", color: "var(--muted)",
-          }}>
-            <p style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.9rem" }}>
-              Enter a search or URL above to start browsing
-            </p>
-            <p style={{ fontSize: "0.75rem", opacity: 0.5 }}>
-              Tip: deploy your Cloudflare Worker first and update PROXY_BASE at the top of this file
-            </p>
-          </div>
-        )}
         <iframe
           ref={iframeRef}
-          style={{
-            width: "100%", height: "100%",
-            minHeight: "calc(100vh - 130px)",
-            border: "none", display: "block",
-            visibility: currentUrl ? "visible" : "hidden",
-          }}
-          onLoad={() => setLoaded(true)}
-          sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox"
+          src={PROXY_URL}
+          style={{ flex: 1, border: "none", width: "100%", display: "block" }}
+          allowFullScreen
           title="Proxy Browser"
         />
       </div>
-    </div>
+    );
+  }
+
+  return (
+    <main style={{ minHeight: "calc(100vh - 58px)", padding: "3rem 1.5rem", maxWidth: "700px", margin: "0 auto" }}>
+      <div style={{ marginBottom: "2.5rem", textAlign: "center" }}>
+        <h1 style={{ fontSize: "2rem", fontWeight: 800, letterSpacing: "-1px", marginBottom: "8px" }}>
+          Web <span style={{ color: "var(--accent)" }}>Proxy</span>
+        </h1>
+        <p style={{ color: "var(--muted)", fontSize: "0.85rem", fontFamily: "'JetBrains Mono', monospace" }}>
+          browse freely · stays in this tab
+        </p>
+      </div>
+
+      <button onClick={() => setActive(true)} style={{
+        width: "100%",
+        padding: "16px",
+        background: "var(--accent)", color: "#000",
+        border: "none", borderRadius: "12px",
+        fontWeight: 800, fontSize: "1.1rem",
+        cursor: "pointer", marginBottom: "2.5rem",
+        letterSpacing: "-0.3px",
+      }}>
+        Open Proxy →
+      </button>
+
+      <p style={{ color: "var(--muted)", fontSize: "0.75rem", fontFamily: "'JetBrains Mono', monospace", marginBottom: "12px", textTransform: "uppercase", letterSpacing: "1px" }}>
+        Quick Access
+      </p>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "10px" }}>
+        {quickLinks.map(({ label }) => (
+          <button key={label} onClick={() => setActive(true)}
+            style={{
+              background: "var(--surface)", border: "1px solid var(--border)",
+              borderRadius: "10px", padding: "14px 18px",
+              color: "var(--text)", cursor: "pointer",
+              textAlign: "left", fontSize: "0.9rem", fontWeight: 600,
+              fontFamily: "'Syne', sans-serif",
+              display: "flex", alignItems: "center", justifyContent: "space-between",
+            }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = "var(--accent)"; e.currentTarget.style.color = "var(--accent)"; }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = "var(--border)"; e.currentTarget.style.color = "var(--text)"; }}
+          >
+            {label} <span style={{ opacity: 0.4 }}>↗</span>
+          </button>
+        ))}
+      </div>
+    </main>
   );
 }
