@@ -7,6 +7,13 @@ export default function RootLayout({ children }) {
     <html lang="en">
       <head>
         <title>ResearchforStudents</title>
+        <script async src="https://www.googletagmanager.com/gtag/js?id=G-N2G5GBXDWM"></script>
+        <script dangerouslySetInnerHTML={{ __html: `
+          window.dataLayer = window.dataLayer || [];
+          function gtag(){dataLayer.push(arguments);}
+          gtag('js', new Date());
+          gtag('config', 'G-N2G5GBXDWM');
+        `}} />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="true" />
         <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
@@ -49,7 +56,6 @@ function Navbar() {
           textShadow: "0 0 20px rgba(0,229,255,0.4)",
         }}>RESEARCH<span style={{ color: "var(--text)" }}>forstudents</span></span>
       </a>
-
       <div style={{ display: "flex", gap: "4px" }}>
         {[
           { label: "Games", href: "/games" },
