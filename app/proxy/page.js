@@ -1,7 +1,7 @@
 "use client";
 import { useState, useRef } from "react";
 
-const PROXY_URL = "https://proxy-production-df6d.up.railway.app/";
+const PROXY_URL = "proxy-production-a233.up.railway.app";
 
 export default function ProxyPage() {
   const [active, setActive] = useState(false);
