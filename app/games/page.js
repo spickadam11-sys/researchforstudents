@@ -4,13 +4,17 @@ import { useState, useMemo } from "react";
 // ─── Proxy config ────────────────────────────────────────────────────────────
 const PROXY_BASE = "https://proxy-production-a233.up.railway.app";
 
-/**
- * Wraps a game URL through the proxy.
- * Adjust the format here if your proxy uses a different scheme, e.g.:
- *   `${PROXY_BASE}/service/${encodeURIComponent(url)}`
- */
+// Ultraviolet's XOR encoder (matches UV's default codec)
+function uvEncode(str) {
+  let result = "";
+  for (let i = 0; i < str.length; i++) {
+    result += i % 2 ? String.fromCharCode(str.charCodeAt(i) ^ 2) : str[i];
+  }
+  return encodeURIComponent(result);
+}
+
 function proxied(url) {
-  return `${PROXY_BASE}/?url=${encodeURIComponent(url)}`;
+  return `${PROXY_BASE}/service/${uvEncode(url)}`;
 }
 
 // ─── Game list ────────────────────────────────────────────────────────────────
