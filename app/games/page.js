@@ -2,7 +2,7 @@
 import { useState, useMemo } from "react";
 
 // ─── REPLACE THIS with your Render URL once it's live ─────────────────────────
-const PROXY_BASE = "https://YOUR_RENDER_URL.onrender.com";
+const PROXY_BASE = "https://proxy-scramjet.onrender.com";
 
 function openViaProxy(gameUrl, title) {
   const win = window.open("", "_blank");
