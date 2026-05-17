@@ -19,8 +19,7 @@ function openViaProxy(rawInput, title) {
   } else if (!/^https?:\/\//i.test(url)) {
     url = "https://" + url;
   }
-  const encoded = PROXY_BASE + UV_PREFIX + uvEncode(url);
-  window.open(encoded, "_blank");
+  window.open(PROXY_BASE + "/?link=" + uvEncode(url), "_blank");
 }
 
 const GAMES = [
