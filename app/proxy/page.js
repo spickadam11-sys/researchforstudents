@@ -2,7 +2,7 @@
 import { useState, useRef } from "react";
 
 // ─── REPLACE THIS with your Render URL once it's live ─────────────────────────
-const PROXY_BASE = "https://proxy-scramjet.onrender.com"{};
+const PROXY_BASE = "https://proxy-scramjet.onrender.com";
 
 function openViaProxy(rawInput) {
   let url = rawInput.trim();
