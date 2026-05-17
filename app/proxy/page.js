@@ -37,7 +37,7 @@ iframe{width:100%;height:100%;border:none;display:block}
 <div id="load">
   <div class="ring"></div>
   <span id="msg">Connecting to proxy...</span>
-  <span id="sub">this may take ~20s if the proxy is waking up</span>
+  <span id="sub">waking up the server (this may take up to a minute)</span>
 </div>
 <button id="x" onclick="window.close()">✕ Close</button>
 <iframe id="f" style="display:none" allowfullscreen></iframe>
@@ -47,25 +47,14 @@ var TARGET = ${JSON.stringify(url)};
 var PROXY  = ${JSON.stringify(PROXY_BASE)};
 var done   = false;
 var elapsed = 0;
-var maxWaitSeconds = 45; // Give it a long patience window
 
 var ticker = setInterval(function() {
   elapsed++;
   if (elapsed === 5)  document.getElementById('msg').textContent = 'Still connecting...';
-  if (elapsed === 12) document.getElementById('msg').textContent = 'Proxy is waking up...';
-  if (elapsed === 22) document.getElementById('msg').textContent = 'Almost there...';
-  if (elapsed >= maxWaitSeconds) {
-    fallback();
-  }
+  if (elapsed === 15) document.getElementById('msg').textContent = 'Proxy is waking up...';
+  if (elapsed === 30) document.getElementById('msg').textContent = 'Render instances take up to 60s to boot...';
+  if (elapsed === 45) document.getElementById('msg').textContent = 'Almost there, holding connection open...';
 }, 1000);
-
-function fallback() {
-  if (done) return; done = true;
-  clearInterval(ticker);
-  document.getElementById('msg').textContent = 'Opening directly...';
-  document.getElementById('sub').textContent = 'proxy unavailable';
-  setTimeout(function() { window.location.href = TARGET; }, 1200);
-}
 
 function showGame() {
   clearInterval(ticker);
@@ -78,35 +67,47 @@ function launch() {
   if (done) return;
   try {
     var cfg = window.__uv$config;
+    // If Render returned a waking-up error page, config object won't exist
     if (!cfg || !cfg.encodeUrl) { 
-      // If scripts parsed but config object isn't fully ready yet, wait and retry launch
-      setTimeout(launch, 1000); 
+      setTimeout(loadScripts, 3000); 
       return; 
     }
     done = true;
     var encoded = PROXY + cfg.prefix + cfg.encodeUrl(TARGET);
     var f = document.getElementById('f');
-    document.getElementById('msg').textContent = 'Loading game...';
+    document.getElementById('msg').textContent = 'Loading proxy session...';
     document.getElementById('sub').textContent = '';
     f.src = encoded;
     setTimeout(showGame, 2000);
   } catch(e) { 
-    fallback(); 
+    setTimeout(loadScripts, 3000);
   }
 }
 
-// Dynamically inject scripts to handle potential server spin-up latency safely
 function loadScripts() {
+  if (done) return;
+  
+  // Clean out any old script attempts from the document body
+  var oldScripts = document.querySelectorAll('.uv-script');
+  oldScripts.forEach(function(el) { el.remove(); });
+
   var b = document.createElement('script');
-  b.src = PROXY + '/uv/uv.bundle.js';
+  b.className = 'uv-script';
+  b.src = PROXY + '/uv/uv.bundle.js?t=' + Date.now();
+  
   b.onload = function() {
     var c = document.createElement('script');
+    c.className = 'uv-script';
     c.src = PROXY + '/uv/uv.config.js?t=' + Date.now();
     c.onload = launch;
-    c.onerror = function() { setTimeout(loadScripts, 3000); }; // loop-retry if server drops request
+    c.onerror = function() { setTimeout(loadScripts, 3000); };
     document.body.appendChild(c);
   };
-  b.onerror = function() { setTimeout(loadScripts, 3000); }; // loop-retry if server drops request
+  
+  b.onerror = function() { 
+    setTimeout(loadScripts, 3000); // Try again in 3 seconds if proxy is offline
+  };
+  
   document.body.appendChild(b);
 }
 
