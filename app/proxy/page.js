@@ -1,13 +1,11 @@
 "use client";
 import { useState, useRef } from "react";
 
-// ─── REPLACE THIS with your Render URL once it's live ─────────────────────────
 const PROXY_BASE = "https://proxy-scramjet.onrender.com";
 
 function openViaProxy(rawInput) {
   let url = rawInput.trim();
   if (!url) return;
-  // If they typed a search term (no dot or space), do a Google search
   if (!url.includes(".") || url.includes(" ")) {
     url = "https://www.google.com/search?q=" + encodeURIComponent(url);
   } else if (!/^https?:\/\//i.test(url)) {
@@ -45,6 +43,11 @@ var TARGET = ${JSON.stringify(url)};
 var PROXY  = ${JSON.stringify(PROXY_BASE)};
 var done   = false;
 
+function showGame() {
+  document.getElementById('load').style.display = 'none';
+  document.getElementById('f').style.display = 'block';
+}
+
 function fallback() {
   if (done) return; done = true;
   document.getElementById('msg').textContent = 'Opening directly...';
@@ -60,17 +63,16 @@ function launch() {
     var encoded = PROXY + cfg.prefix + cfg.encodeUrl(TARGET);
     var f = document.getElementById('f');
     document.getElementById('msg').textContent = 'Loading...';
-    f.onload = function() {
-      document.getElementById('load').style.display = 'none';
-      f.style.display = 'block';
-    };
     f.src = encoded;
+    // Force show after 2.5s — UV does client-side nav so onload is unreliable
+    setTimeout(showGame, 2500);
   } catch(e) { fallback(); }
 }
 
 if (document.readyState === 'complete') launch();
 else window.addEventListener('load', launch);
-setTimeout(function(){ if(!done) fallback(); }, 8000);
+// Hard fallback if UV scripts never load
+setTimeout(function(){ if (!done) fallback(); }, 8000);
 </script>
 </body></html>`);
   win.document.close();
@@ -96,149 +98,75 @@ export default function ProxyPage() {
   return (
     <main style={{
       minHeight: "calc(100vh - 58px)",
-      display: "flex",
-      flexDirection: "column",
-      alignItems: "center",
-      justifyContent: "center",
-      padding: "2rem 1.5rem",
-      position: "relative",
-      overflow: "hidden",
+      display: "flex", flexDirection: "column",
+      alignItems: "center", justifyContent: "center",
+      padding: "2rem 1.5rem", position: "relative", overflow: "hidden",
     }}>
-      {/* grid background */}
       <div style={{
         position: "absolute", inset: 0,
         backgroundImage: `linear-gradient(rgba(0,229,255,0.03) 1px, transparent 1px),
                           linear-gradient(90deg, rgba(0,229,255,0.03) 1px, transparent 1px)`,
-        backgroundSize: "40px 40px",
-        pointerEvents: "none",
+        backgroundSize: "40px 40px", pointerEvents: "none",
       }} />
 
       <div style={{ position: "relative", zIndex: 1, width: "100%", maxWidth: "680px" }}>
-
-        {/* heading */}
         <div style={{ textAlign: "center", marginBottom: "2.5rem" }}>
-          <h1 style={{
-            fontSize: "clamp(2rem, 6vw, 3.5rem)",
-            fontWeight: 800,
-            letterSpacing: "-2px",
-            lineHeight: 1,
-            marginBottom: "0.5rem",
-          }}>
+          <h1 style={{ fontSize: "clamp(2rem, 6vw, 3.5rem)", fontWeight: 800, letterSpacing: "-2px", lineHeight: 1, marginBottom: "0.5rem" }}>
             <span style={{ color: "var(--text)" }}>FREE </span>
             <span style={{ color: "var(--accent)", textShadow: "0 0 30px rgba(0,229,255,0.35)" }}>PROXY</span>
           </h1>
-          <p style={{
-            color: "var(--muted)",
-            fontSize: "0.82rem",
-            fontFamily: "'JetBrains Mono', monospace",
-            letterSpacing: "0.5px",
-          }}>
+          <p style={{ color: "var(--muted)", fontSize: "0.82rem", fontFamily: "'JetBrains Mono', monospace", letterSpacing: "0.5px" }}>
             type a url or search term — opens in a new tab
           </p>
         </div>
 
-        {/* search bar */}
         <div style={{
-          display: "flex",
-          gap: "8px",
-          background: "var(--surface)",
-          border: "1px solid var(--border)",
-          borderRadius: "14px",
-          padding: "6px 6px 6px 16px",
-          marginBottom: "2rem",
-          boxShadow: "0 0 30px rgba(0,229,255,0.06)",
+          display: "flex", gap: "8px",
+          background: "var(--surface)", border: "1px solid var(--border)",
+          borderRadius: "14px", padding: "6px 6px 6px 16px",
+          marginBottom: "2rem", boxShadow: "0 0 30px rgba(0,229,255,0.06)",
         }}>
           <input
-            ref={inputRef}
-            type="text"
+            ref={inputRef} type="text"
             placeholder="Search or enter URL..."
             value={input}
             onChange={e => setInput(e.target.value)}
             onKeyDown={handleKey}
-            style={{
-              flex: 1,
-              background: "transparent",
-              border: "none",
-              outline: "none",
-              color: "var(--text)",
-              fontSize: "1rem",
-              fontFamily: "'Syne', sans-serif",
-            }}
+            style={{ flex: 1, background: "transparent", border: "none", outline: "none", color: "var(--text)", fontSize: "1rem", fontFamily: "'Syne', sans-serif" }}
           />
-          <button
-            onClick={handleGo}
-            style={{
-              background: "var(--accent)",
-              color: "#000",
-              border: "none",
-              borderRadius: "10px",
-              padding: "10px 22px",
-              fontWeight: 700,
-              fontSize: "0.9rem",
-              cursor: "pointer",
-              whiteSpace: "nowrap",
-              transition: "opacity 0.15s",
-            }}
-          >
+          <button onClick={handleGo} style={{
+            background: "var(--accent)", color: "#000", border: "none",
+            borderRadius: "10px", padding: "10px 22px", fontWeight: 700,
+            fontSize: "0.9rem", cursor: "pointer", whiteSpace: "nowrap",
+          }}>
             Go →
           </button>
         </div>
 
-        {/* quick links */}
         <div>
-          <p style={{
-            color: "var(--muted)",
-            fontSize: "0.68rem",
-            fontFamily: "'JetBrains Mono', monospace",
-            textTransform: "uppercase",
-            letterSpacing: "1px",
-            marginBottom: "0.75rem",
-            textAlign: "center",
-          }}>
+          <p style={{ color: "var(--muted)", fontSize: "0.68rem", fontFamily: "'JetBrains Mono', monospace", textTransform: "uppercase", letterSpacing: "1px", marginBottom: "0.75rem", textAlign: "center" }}>
             Quick Links
           </p>
-          <div style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))",
-            gap: "8px",
-          }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))", gap: "8px" }}>
             {QUICK_LINKS.map(({ label, url, icon }) => (
-              <button
-                key={label}
-                onClick={() => openViaProxy(url)}
-                onMouseEnter={() => setHover(label)}
-                onMouseLeave={() => setHover(null)}
+              <button key={label} onClick={() => openViaProxy(url)}
+                onMouseEnter={() => setHover(label)} onMouseLeave={() => setHover(null)}
                 style={{
                   background: hover === label ? "var(--surface2)" : "var(--surface)",
                   border: `1px solid ${hover === label ? "var(--accent)" : "var(--border)"}`,
-                  borderRadius: "10px",
-                  padding: "12px",
+                  borderRadius: "10px", padding: "12px",
                   color: hover === label ? "var(--accent)" : "var(--muted)",
-                  cursor: "pointer",
-                  fontSize: "0.85rem",
-                  fontWeight: 600,
-                  transition: "all 0.15s",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "8px",
-                  fontFamily: "'Syne', sans-serif",
-                }}
-              >
-                <span>{icon}</span>
-                <span>{label}</span>
+                  cursor: "pointer", fontSize: "0.85rem", fontWeight: 600,
+                  transition: "all 0.15s", display: "flex", alignItems: "center",
+                  gap: "8px", fontFamily: "'Syne', sans-serif",
+                }}>
+                <span>{icon}</span><span>{label}</span>
               </button>
             ))}
           </div>
         </div>
 
-        {/* note */}
-        <p style={{
-          marginTop: "2rem",
-          textAlign: "center",
-          color: "var(--muted)",
-          fontSize: "0.72rem",
-          fontFamily: "'JetBrains Mono', monospace",
-        }}>
+        <p style={{ marginTop: "2rem", textAlign: "center", color: "var(--muted)", fontSize: "0.72rem", fontFamily: "'JetBrains Mono', monospace" }}>
           make sure pop-ups are allowed for this site
         </p>
       </div>

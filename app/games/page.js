@@ -1,20 +1,17 @@
 "use client";
 import { useState, useMemo } from "react";
 
-// ─── Must match proxy/page.js exactly ────────────────────────────────────────
 const PROXY_BASE = "https://proxy-scramjet.onrender.com";
 
-// Same function as proxy/page.js — proven to work
-function openViaProxy(rawInput, title) {
-  let url = rawInput.trim();
-  if (!url) return;
+function openViaProxy(rawUrl, title) {
+  let url = rawUrl.trim();
   if (!/^https?:\/\//i.test(url)) url = "https://" + url;
 
   const win = window.open("", "_blank");
   if (!win) { alert("Allow pop-ups for this site first."); return; }
 
   win.document.write(`<!DOCTYPE html><html><head>
-<title>${title || "Loading..."}</title>
+<title>${title || "Game"}</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{background:#07080f;color:#fff;font-family:sans-serif;width:100vw;height:100vh;overflow:hidden}
@@ -41,6 +38,11 @@ var TARGET = ${JSON.stringify(url)};
 var PROXY  = ${JSON.stringify(PROXY_BASE)};
 var done   = false;
 
+function showGame() {
+  document.getElementById('load').style.display = 'none';
+  document.getElementById('f').style.display = 'block';
+}
+
 function fallback() {
   if (done) return; done = true;
   document.getElementById('msg').textContent = 'Opening directly...';
@@ -56,23 +58,21 @@ function launch() {
     var encoded = PROXY + cfg.prefix + cfg.encodeUrl(TARGET);
     var f = document.getElementById('f');
     document.getElementById('msg').textContent = 'Loading...';
-    f.onload = function() {
-      document.getElementById('load').style.display = 'none';
-      f.style.display = 'block';
-    };
     f.src = encoded;
+    // Force-show after 2.5s — UV does client-side nav so onload is unreliable
+    setTimeout(showGame, 2500);
   } catch(e) { fallback(); }
 }
 
 if (document.readyState === 'complete') launch();
 else window.addEventListener('load', launch);
-setTimeout(function(){ if(!done) fallback(); }, 8000);
+// Hard fallback if UV scripts never load
+setTimeout(function(){ if (!done) fallback(); }, 8000);
 </script>
 </body></html>`);
   win.document.close();
 }
 
-// ─── Game list ────────────────────────────────────────────────────────────────
 const GAMES = [
   { id:"1v1lol",          name:"1v1.LOL",                image:"/Thumbnails/1v1_lol.png",                 url:"https://1v1-lol-online.github.io/",                                                                                   tags:["shooting","building","multiplayer"] },
   { id:"2048",            name:"2048",                    image:"/Thumbnails/2048.png",                    url:"https://play2048.co/",                                                                                                tags:["puzzle","casual"] },
@@ -165,11 +165,8 @@ export default function GamesPage() {
       </div>
 
       <div style={{ position: "relative", maxWidth: "380px", marginBottom: "1.25rem" }}>
-        <input
-          type="text"
-          placeholder="Search games or tags..."
-          value={search}
-          onChange={e => setSearch(e.target.value)}
+        <input type="text" placeholder="Search games or tags..."
+          value={search} onChange={e => setSearch(e.target.value)}
           style={{
             width: "100%", padding: "10px 14px",
             background: "var(--surface)", border: "1px solid var(--border)",
@@ -191,9 +188,7 @@ export default function GamesPage() {
             fontSize: "0.68rem", fontFamily: "'JetBrains Mono', monospace",
             textTransform: "uppercase", letterSpacing: "0.6px",
             cursor: "pointer", transition: "all 0.15s",
-          }}>
-            {tag}
-          </button>
+          }}>{tag}</button>
         ))}
       </div>
 
@@ -212,28 +207,21 @@ export default function GamesPage() {
 
 function GameCard({ game }) {
   const [hover, setHover] = useState(false);
-
   return (
-    <div
-      style={{
-        background: "var(--surface)",
-        border: `1px solid ${hover ? "var(--accent)" : "var(--border)"}`,
-        borderRadius: "var(--card-radius)", overflow: "hidden",
-        transition: "all 0.18s",
-        transform: hover ? "translateY(-3px)" : "translateY(0)",
-        boxShadow: hover ? "0 8px 30px rgba(0,229,255,0.12)" : "none",
-        cursor: "pointer",
-      }}
-      onMouseEnter={() => setHover(true)}
-      onMouseLeave={() => setHover(false)}
+    <div style={{
+      background: "var(--surface)",
+      border: `1px solid ${hover ? "var(--accent)" : "var(--border)"}`,
+      borderRadius: "var(--card-radius)", overflow: "hidden",
+      transition: "all 0.18s",
+      transform: hover ? "translateY(-3px)" : "translateY(0)",
+      boxShadow: hover ? "0 8px 30px rgba(0,229,255,0.12)" : "none",
+      cursor: "pointer",
+    }}
+      onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}
     >
       <div style={{ position: "relative", aspectRatio: "16/10", background: "var(--surface2)", overflow: "hidden" }}>
-        <img
-          src={game.image} alt={game.name}
-          style={{
-            width: "100%", height: "100%", objectFit: "cover", display: "block",
-            transform: hover ? "scale(1.05)" : "scale(1)", transition: "transform 0.3s",
-          }}
+        <img src={game.image} alt={game.name}
+          style={{ width: "100%", height: "100%", objectFit: "cover", display: "block", transform: hover ? "scale(1.05)" : "scale(1)", transition: "transform 0.3s" }}
           onError={e => { e.target.style.display = "none"; }}
         />
         <div style={{
@@ -241,37 +229,21 @@ function GameCard({ game }) {
           display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
           gap: "8px", opacity: hover ? 1 : 0, transition: "opacity 0.2s",
         }}>
-          <button
-            onClick={e => { e.stopPropagation(); openViaProxy(game.url, game.name); }}
-            style={{
-              background: "var(--accent)", color: "#000", border: "none",
-              borderRadius: "8px", padding: "8px 20px", fontWeight: 700,
-              fontSize: "0.82rem", cursor: "pointer", width: "140px",
-            }}>
+          <button onClick={e => { e.stopPropagation(); openViaProxy(game.url, game.name); }}
+            style={{ background: "var(--accent)", color: "#000", border: "none", borderRadius: "8px", padding: "8px 20px", fontWeight: 700, fontSize: "0.82rem", cursor: "pointer", width: "140px" }}>
             ▶ Play Here
           </button>
-          <button
-            onClick={e => { e.stopPropagation(); openViaProxy(game.url, game.name); }}
-            style={{
-              background: "transparent", color: "var(--text)",
-              border: "1px solid var(--border)", borderRadius: "8px",
-              padding: "7px 20px", fontWeight: 600, fontSize: "0.82rem",
-              cursor: "pointer", width: "140px",
-            }}>
+          <button onClick={e => { e.stopPropagation(); openViaProxy(game.url, game.name); }}
+            style={{ background: "transparent", color: "var(--text)", border: "1px solid var(--border)", borderRadius: "8px", padding: "7px 20px", fontWeight: 600, fontSize: "0.82rem", cursor: "pointer", width: "140px" }}>
             ↗ New Tab
           </button>
         </div>
       </div>
-
       <div style={{ padding: "10px 12px" }}>
         <div style={{ fontWeight: 700, fontSize: "0.92rem", marginBottom: "6px" }}>{game.name}</div>
         <div style={{ display: "flex", flexWrap: "wrap", gap: "4px" }}>
           {game.tags.map(tag => (
-            <span key={tag} style={{
-              fontSize: "0.62rem", background: "var(--surface2)", color: "var(--muted)",
-              padding: "2px 7px", borderRadius: "5px", textTransform: "uppercase",
-              letterSpacing: "0.6px", fontFamily: "'JetBrains Mono', monospace",
-            }}>{tag}</span>
+            <span key={tag} style={{ fontSize: "0.62rem", background: "var(--surface2)", color: "var(--muted)", padding: "2px 7px", borderRadius: "5px", textTransform: "uppercase", letterSpacing: "0.6px", fontFamily: "'JetBrains Mono', monospace" }}>{tag}</span>
           ))}
         </div>
       </div>
