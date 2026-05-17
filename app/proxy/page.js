@@ -1,24 +1,24 @@
 "use client";
-import { useState, useMemo } from "react";
+import { useState, useRef } from "react";
 
-// ─── Proxy config ─────────────────────────────────────────────────────────────
-const PROXY_BASE = "https://proxy-production-a233.up.railway.app";
+// ─── REPLACE THIS with your Render URL once it's live ─────────────────────────
+const PROXY_BASE = "https://proxy-scramjet.onrender.com"{};
 
-/**
- * Opens a game by loading UV's OWN bundle + config scripts from the proxy,
- * letting UV encode the URL itself — exactly as if a user opened the proxy
- * and searched for the game URL.
- *
- * FIX: cfg.prefix is a relative path (e.g. "/service/"), so we must prepend
- * PROXY_BASE to build an absolute URL; otherwise the iframe resolves the path
- * against the RFS domain and gets a 404.
- */
-function openViaProxy(gameUrl, title) {
+function openViaProxy(rawInput) {
+  let url = rawInput.trim();
+  if (!url) return;
+  // If they typed a search term (no dot or space), do a Google search
+  if (!url.includes(".") || url.includes(" ")) {
+    url = "https://www.google.com/search?q=" + encodeURIComponent(url);
+  } else if (!/^https?:\/\//i.test(url)) {
+    url = "https://" + url;
+  }
+
   const win = window.open("", "_blank");
   if (!win) { alert("Allow pop-ups for this site first."); return; }
 
   win.document.write(`<!DOCTYPE html><html><head>
-<title>${title || "Game"}</title>
+<title>Loading...</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{background:#07080f;color:#fff;font-family:sans-serif;width:100vw;height:100vh;overflow:hidden}
@@ -35,253 +35,213 @@ iframe{width:100%;height:100%;border:none;display:block}
 #x:hover{background:#1a1a1a}
 </style>
 </head><body>
-<div id="load"><div class="ring"></div><span id="msg">Connecting to proxy...</span></div>
+<div id="load"><div class="ring"></div><span id="msg">Connecting...</span></div>
 <button id="x" onclick="window.close()">✕ Close</button>
 <iframe id="f" style="display:none" allowfullscreen></iframe>
-
-<script src="${PROXY_BASE}/uv/uv.bundle.js" onerror="fallback()"></script>
-<script src="${PROXY_BASE}/uv/uv.config.js" onerror="fallback()"></script>
+<script src="${PROXY_BASE}/uv/uv.bundle.js"></script>
+<script src="${PROXY_BASE}/uv/uv.config.js"></script>
 <script>
-var GAME     = ${JSON.stringify(gameUrl)};
-var PROXY    = ${JSON.stringify(PROXY_BASE)};   /* ← injected so inner script can use it */
-var done     = false;
+var TARGET = ${JSON.stringify(url)};
+var PROXY  = ${JSON.stringify(PROXY_BASE)};
+var done   = false;
 
 function fallback() {
   if (done) return; done = true;
-  document.getElementById('msg').textContent = 'Redirecting directly...';
-  window.location.href = GAME;
+  document.getElementById('msg').textContent = 'Opening directly...';
+  window.location.href = TARGET;
 }
 
 function launch() {
-  if (done) return; done = true;
+  if (done) return;
   try {
     var cfg = window.__uv$config;
     if (!cfg || !cfg.encodeUrl) { fallback(); return; }
-    /* cfg.prefix is a relative path like "/service/" — prepend the proxy
-       origin so the iframe hits the proxy, NOT the RFS domain. */
-    var url = PROXY + cfg.prefix + cfg.encodeUrl(GAME);
-    var f   = document.getElementById('f');
-    document.getElementById('msg').textContent = 'Loading game...';
+    done = true;
+    var encoded = PROXY + cfg.prefix + cfg.encodeUrl(TARGET);
+    var f = document.getElementById('f');
+    document.getElementById('msg').textContent = 'Loading...';
     f.onload = function() {
       document.getElementById('load').style.display = 'none';
       f.style.display = 'block';
     };
-    f.src = url;
+    f.src = encoded;
   } catch(e) { fallback(); }
 }
 
 if (document.readyState === 'complete') launch();
 else window.addEventListener('load', launch);
+setTimeout(function(){ if(!done) fallback(); }, 8000);
 </script>
 </body></html>`);
   win.document.close();
 }
 
-// ─── Game list (URLs from PDF) ────────────────────────────────────────────────
-const GAMES = [
-  { id:"1v1lol",          name:"1v1.LOL",                image:"/Thumbnails/1v1_lol.png",                 url:"https://1v1-lol-online.github.io/",                                                                                                          tags:["shooting","building","multiplayer"] },
-  { id:"2048",            name:"2048",                    image:"/Thumbnails/2048.png",                    url:"https://play2048.co/",                                                                                                                        tags:["puzzle","casual"] },
-  { id:"amongus",         name:"Among Us",                image:"/Thumbnails/among_us.png",                url:"https://www.amongus.onl/",                                                                                                                    tags:["multiplayer","social"] },
-  { id:"baseballbros",    name:"Baseball Bros",           image:"/Thumbnails/baseball_bros.png",           url:"https://baseballbros.io/",                                                                                                                    tags:["sports","baseball","2-player"] },
-  { id:"basketbros",      name:"Basket Bros",             image:"/Thumbnails/basket_bros.png",             url:"https://basketbros.io/",                                                                                                                      tags:["sports","2-player"] },
-  { id:"basketrandom",    name:"Basket Random",           image:"/Thumbnails/basket_random.png",           url:"https://files.twoplayergames.org/files/games/other/Basket_Random/index.html",                                                                 tags:["sports","random","2-player"] },
-  { id:"bblegends",       name:"Basketball Legends 2020", image:"/Thumbnails/basketball_legends_2020.png", url:"https://mathgames66.github.io/p/bblegends2020.html",                                                                                         tags:["sports","basketball"] },
-  { id:"bballstars",      name:"Basketball Stars",        image:"/Thumbnails/basketball_stars.png",        url:"https://basketballstars-online.github.io/",                                                                                                  tags:["sports","basketball","multiplayer"] },
-  { id:"bigshotboxing",   name:"Big Shot Boxing",         image:"/Thumbnails/big_shot_boxing.png",         url:"https://bigshot-boxing.github.io/",                                                                                                          tags:["boxing","sports"] },
-  { id:"bikeobby",        name:"Bike Obby",               image:"/Thumbnails/bike_obby.png",               url:"https://www.twoplayergames.org/embed/obby-on-a-bike",                                                                                        tags:["casual","racing"] },
-  { id:"blackjack",       name:"Blackjack",               image:"/Thumbnails/blackjack.png",               url:"https://games.arkadium.com/games/blackjack",                                                                                                  tags:["card","casino"] },
-  { id:"bloonstd",        name:"Bloons TD",               image:"/Thumbnails/bloons_td.png",               url:"https://bloonstowerdefense.io/",                                                                                                              tags:["strategy","tower defense"] },
-  { id:"boxingrandom",    name:"Boxing Random",           image:"/Thumbnails/boxing_random.png",           url:"https://files.twoplayergames.org/files/games/other/Boxing_Random/index.html",                                                                 tags:["boxing","random","2-player"] },
-  { id:"chess",           name:"Chess",                   image:"/Thumbnails/chess.png",                   url:"https://chessnextmove.ai/chess-2-players",                                                                                                    tags:["strategy","2-player","board"] },
-  { id:"clusterrush",     name:"Cluster Rush",            image:"/Thumbnails/cluster_rush.png",            url:"https://cluster-rush-games.github.io/",                                                                                                      tags:["platformer","skill"] },
-  { id:"coreball",        name:"Core Ball",               image:"/Thumbnails/core_ball.png",               url:"https://petezahgames.com/storage/ag/arsenic/core-ball/",                                                                                      tags:["arcade","skill"] },
-  { id:"dancefire",       name:"Dance of Fire & Ice",     image:"/Thumbnails/a_dance_of_fire_and_ice.png", url:"https://htmlxm.github.io/h8/a-dance-of-fire-and-ice/",                                                                                       tags:["rhythm","music","hard"] },
-  { id:"drifthunters",    name:"Drift Hunters",           image:"/Thumbnails/drift_hunters.png",           url:"https://drift-hunters.co/",                                                                                                                   tags:["racing","cars"] },
-  { id:"dunedash",        name:"Dune Dash",               image:"/Thumbnails/dune_dash.png",               url:"https://sites.google.com/view/dune-dash/",                                                                                                    tags:["platformer","casual"] },
-  { id:"escaperoad",      name:"Escape Road",             image:"/Thumbnails/escape_road.png",             url:"https://escaperoad.io/",                                                                                                                      tags:["racing","survival"] },
-  { id:"fireboywater",    name:"Fireboy & Watergirl",     image:"/Thumbnails/fireboy_and_watergirl.png",   url:"https://fireboy-and-watergirl.gitlab.io/",                                                                                                    tags:["puzzle","2-player","platformer"] },
-  { id:"fnae",            name:"5 Nights at Epsteins",    image:"/Thumbnails/five_nights_at_epsteins.png", url:"https://qz-games.github.io/Games/game.html?id=five+nights+at+epsteins",                                                                      tags:["horror","strategy"] },
-  { id:"footballbros",    name:"Football Bros",           image:"/Thumbnails/football_bros.png",           url:"https://footballbros.io",                                                                                                                     tags:["sports","football","2-player"] },
-  { id:"fruitmerge",      name:"Fruit Merge",             image:"/Thumbnails/fruit_merge.png",             url:"https://plays.org/fruit-merge/",                                                                                                              tags:["puzzle","casual"] },
-  { id:"getawayshootout", name:"Getaway Shootout",        image:"/Thumbnails/getaway_shootout.png",        url:"https://getawayshootoutonline.github.io/",                                                                                                    tags:["shooting","2-player","casual"] },
-  { id:"gladihoppers",    name:"Gladihoppers",            image:"/Thumbnails/gladihoppers.png",            url:"https://gladihoppers.io/",                                                                                                                    tags:["fighting","2-player"] },
-  { id:"granny",          name:"Granny",                  image:"/Thumbnails/granny.png",                  url:"/wp-content/uploads/games/granny/",                                                                                                           tags:["horror","survival"] },
-  { id:"gunspin",         name:"Gunspin",                 image:"/Thumbnails/gunspin.png",                 url:"https://mathgames66.github.io/p/gunspin.html",                                                                                                tags:["arcade","casual"] },
-  { id:"hardestgame",     name:"World's Hardest Game",    image:"/Thumbnails/hardest_game.png",            url:"https://mathgames66.github.io/p/theworldshardestgame.html",                                                                                   tags:["puzzle","hard","skill"] },
-  { id:"headsoccer",      name:"Head Soccer",             image:"/Thumbnails/head_soccer.png",             url:"https://www.hoodamath.com/games/headsoccer.html",                                                                                             tags:["sports","soccer","2-player"] },
-  { id:"helixjump",       name:"Helix Jump",              image:"/Thumbnails/helix_jump.png",              url:"https://helix-jump.com/",                                                                                                                     tags:["arcade","casual"] },
-  { id:"holeio",          name:"Hole.io",                 image:"/Thumbnails/hole_io.png",                 url:"https://holeioonline.github.io/",                                                                                                             tags:["io","multiplayer","casual"] },
-  { id:"idlebreakout",    name:"Idle Breakout",           image:"/Thumbnails/idle_breakout.png",           url:"https://mathgames66.github.io/p/idlebreakout.html",                                                                                           tags:["idle","casual"] },
-  { id:"krunkerio",       name:"Krunker.io",              image:"/Thumbnails/krunker_io.png",              url:"https://krunker.io/",                                                                                                                         tags:["shooting","io","multiplayer"] },
-  { id:"level67",         name:"Level 67",                image:"/Thumbnails/level_67.png",                url:"https://geometry-games.io/dashmetry-67",                                                                                                      tags:["platformer","rhythm","hard"] },
-  { id:"leveldevil",      name:"Level Devil",             image:"/Thumbnails/levil_devil.png",             url:"https://leveldevil-unblocked.github.io/",                                                                                                     tags:["platformer","hard","troll"] },
-  { id:"monkeymart",      name:"Monkey Mart",             image:"/Thumbnails/monkey_mart.png",             url:"https://petezahgames.com/storage/ag/arsenic/monkey-mart/",                                                                                    tags:["idle","casual"] },
-  { id:"motox3m",         name:"Moto X3M",                image:"/Thumbnails/moto_x3m.png",               url:"https://mathgames66.github.io/p/motox3m.html",                                                                                                tags:["racing","stunt"] },
-  { id:"onlyup",          name:"Only Up",                 image:"/Thumbnails/only_up.png",                 url:"https://script.google.com/macros/s/AKfycbwMccc783yv5Ftx2nkZ6BpHDi66OYtby8TRsYzgDufHka0zzRHHcV19NgtnFJH0ltbEvQ/exec",                       tags:["platformer","hard"] },
-  { id:"ovo",             name:"OvO",                     image:"/Thumbnails/ovo.png",                     url:"https://playovoonline.com/",                                                                                                                  tags:["platformer","skill"] },
-  { id:"paperio",         name:"Paper.io",                image:"/Thumbnails/paper_io.png",                url:"https://ragdoll-archers.github.io/paper-io-2/index.html",                                                                                     tags:["io","casual","multiplayer"] },
-  { id:"penaltyshot",     name:"Penalty Shot",            image:"/Thumbnails/penalty_shot.png",            url:"https://penaltykick-online.com/",                                                                                                             tags:["sports","soccer"] },
-  { id:"pingpongchaos",   name:"Ping Pong Chaos",         image:"/Thumbnails/ping_pong_chaos.png",         url:"https://houseof-hazards.com/game/ping-pong-chaos/",                                                                                           tags:["sports","casual","2-player"] },
-  { id:"polytrack",       name:"Polytrack",               image:"/Thumbnails/polytrack.png",               url:"https://kodub.itch.io/polytrack",                                                                                                             tags:["racing","casual"] },
-  { id:"pool",            name:"Pool",                    image:"/Thumbnails/pool.png",                    url:"https://www.247pool.com/",                                                                                                                    tags:["sports","casual"] },
-  { id:"retrobowl",       name:"Retro Bowl",              image:"/Thumbnails/retro_bowl.png",              url:"https://mathgames66.github.io/p/retrobowl.html",                                                                                              tags:["sports","football","retro"] },
-  { id:"retrobowlcollege",name:"Retro Bowl College",      image:"/Thumbnails/retro_bowl_college.png",      url:"https://retrobowl-college.io/",                                                                                                               tags:["sports","football"] },
-  { id:"rooftopsnipers",  name:"Rooftop Snipers",         image:"/Thumbnails/rooftop_snipers.png",         url:"https://htmlxm.github.io/h/rooftop-snipers/",                                                                                                tags:["shooting","2-player","casual"] },
-  { id:"run",             name:"Run",                     image:"/Thumbnails/run.png",                     url:"https://www.twoplayergames.org/embed/run-3d",                                                                                                 tags:["platformer","endless"] },
-  { id:"slope",           name:"Slope",                   image:"/Thumbnails/slope.png",                   url:"https://slope-game.github.io/",                                                                                                               tags:["arcade","skill","endless"] },
-  { id:"slowroads",       name:"Slow Roads",              image:"/Thumbnails/slow_roads.png",              url:"https://slowroads.io/",                                                                                                                       tags:["driving","relaxing"] },
-  { id:"snowrider",       name:"Snow Rider 3D",           image:"/Thumbnails/snow_rider_3d.png",           url:"https://snow-rider3d.github.io/",                                                                                                             tags:["racing","winter"] },
-  { id:"soccerbros",      name:"Soccer Bros",             image:"/Thumbnails/soccer_bros.png",             url:"https://soccerbros.io/",                                                                                                                      tags:["sports","soccer","2-player"] },
-  { id:"soccerbros2",     name:"Soccer Bros 2",           image:"/Thumbnails/soccer_bros_2.png",           url:"https://soccer-bros.net/game/soccer-bros-2/",                                                                                                 tags:["sports","soccer","2-player"] },
-  { id:"soccerrandom",    name:"Soccer Random",           image:"/Thumbnails/soccer_random.png",           url:"https://files.twoplayergames.org/files/games/other/Soccer_Random/index.html",                                                                 tags:["sports","soccer","random"] },
-  { id:"spacewaves",      name:"Spacewaves",              image:"/Thumbnails/spacewaves.png",              url:"https://spacewaves.io/",                                                                                                                      tags:["arcade","skill"] },
-  { id:"tag",             name:"Tag",                     image:"/Thumbnails/tag.png",                     url:"https://taggame.io/",                                                                                                                         tags:["casual","multiplayer"] },
-  { id:"tetris",          name:"Tetris",                  image:"/Thumbnails/tetris.png",                  url:"https://www.freetetris.org/",                                                                                                                 tags:["puzzle","classic"] },
-  { id:"texasholdem",     name:"Texas Hold'em",           image:"/Thumbnails/texas_holdem.png",            url:"https://games.aarp.org/games/texas-holdem-poker-sit-and-go",                                                                                  tags:["card","casino"] },
-  { id:"impossiblequiz",  name:"The Impossible Quiz",     image:"/Thumbnails/the_impossible_quiz.png",     url:"https://the-impossible-quiz.co.uk/",                                                                                                          tags:["quiz","casual","hard"] },
-  { id:"tictactoe",       name:"Tic Tac Toe",             image:"/Thumbnails/tic_tac_toe.png",             url:"https://playtictactoe.org/",                                                                                                                  tags:["board","2-player","classic"] },
-  { id:"tinyfishing",     name:"Tiny Fishing",            image:"/Thumbnails/tiny_fishing.png",            url:"https://mathgames66.github.io/p/tinyfishing.html",                                                                                            tags:["idle","casual"] },
-  { id:"tubejumpers",     name:"Tube Jumpers",            image:"/Thumbnails/tube_jumpers.png",            url:"https://topvaz.com/go/tube-jumpers/",                                                                                                         tags:["casual","multiplayer"] },
+const QUICK_LINKS = [
+  { label: "Google",    url: "https://www.google.com",    icon: "🔍" },
+  { label: "YouTube",   url: "https://www.youtube.com",   icon: "▶️" },
+  { label: "Reddit",    url: "https://www.reddit.com",    icon: "🤖" },
+  { label: "Wikipedia", url: "https://www.wikipedia.org", icon: "📖" },
+  { label: "Twitter",   url: "https://www.twitter.com",   icon: "🐦" },
+  { label: "GitHub",    url: "https://www.github.com",    icon: "💻" },
 ];
 
-const ALL_TAGS = ["all", ...Array.from(new Set(GAMES.flatMap(g => g.tags))).sort()];
+export default function ProxyPage() {
+  const [input, setInput] = useState("");
+  const [hover, setHover] = useState(null);
+  const inputRef = useRef(null);
 
-// ─── Main page ────────────────────────────────────────────────────────────────
-export default function GamesPage() {
-  const [search, setSearch]       = useState("");
-  const [activeTag, setActiveTag] = useState("all");
-
-  const filtered = useMemo(() => {
-    const q = search.toLowerCase();
-    return GAMES.filter(g => {
-      const matchTag    = activeTag === "all" || g.tags.includes(activeTag);
-      const matchSearch = !q || g.name.toLowerCase().includes(q) || g.tags.some(t => t.includes(q));
-      return matchTag && matchSearch;
-    });
-  }, [search, activeTag]);
+  function handleGo() { openViaProxy(input); }
+  function handleKey(e) { if (e.key === "Enter") handleGo(); }
 
   return (
-    <main style={{ minHeight: "calc(100vh - 58px)", padding: "2rem 1.5rem", maxWidth: "1200px", margin: "0 auto" }}>
+    <main style={{
+      minHeight: "calc(100vh - 58px)",
+      display: "flex",
+      flexDirection: "column",
+      alignItems: "center",
+      justifyContent: "center",
+      padding: "2rem 1.5rem",
+      position: "relative",
+      overflow: "hidden",
+    }}>
+      {/* grid background */}
+      <div style={{
+        position: "absolute", inset: 0,
+        backgroundImage: `linear-gradient(rgba(0,229,255,0.03) 1px, transparent 1px),
+                          linear-gradient(90deg, rgba(0,229,255,0.03) 1px, transparent 1px)`,
+        backgroundSize: "40px 40px",
+        pointerEvents: "none",
+      }} />
 
-      <div style={{ marginBottom: "1.75rem" }}>
-        <h1 style={{ fontSize: "2.2rem", fontWeight: 800, letterSpacing: "-1px", marginBottom: "4px" }}>Games</h1>
-        <p style={{ color: "var(--muted)", fontSize: "0.85rem", fontFamily: "'JetBrains Mono', monospace" }}>
-          {GAMES.length} games — click to play
+      <div style={{ position: "relative", zIndex: 1, width: "100%", maxWidth: "680px" }}>
+
+        {/* heading */}
+        <div style={{ textAlign: "center", marginBottom: "2.5rem" }}>
+          <h1 style={{
+            fontSize: "clamp(2rem, 6vw, 3.5rem)",
+            fontWeight: 800,
+            letterSpacing: "-2px",
+            lineHeight: 1,
+            marginBottom: "0.5rem",
+          }}>
+            <span style={{ color: "var(--text)" }}>FREE </span>
+            <span style={{ color: "var(--accent)", textShadow: "0 0 30px rgba(0,229,255,0.35)" }}>PROXY</span>
+          </h1>
+          <p style={{
+            color: "var(--muted)",
+            fontSize: "0.82rem",
+            fontFamily: "'JetBrains Mono', monospace",
+            letterSpacing: "0.5px",
+          }}>
+            type a url or search term — opens in a new tab
+          </p>
+        </div>
+
+        {/* search bar */}
+        <div style={{
+          display: "flex",
+          gap: "8px",
+          background: "var(--surface)",
+          border: "1px solid var(--border)",
+          borderRadius: "14px",
+          padding: "6px 6px 6px 16px",
+          marginBottom: "2rem",
+          boxShadow: "0 0 30px rgba(0,229,255,0.06)",
+        }}>
+          <input
+            ref={inputRef}
+            type="text"
+            placeholder="Search or enter URL..."
+            value={input}
+            onChange={e => setInput(e.target.value)}
+            onKeyDown={handleKey}
+            style={{
+              flex: 1,
+              background: "transparent",
+              border: "none",
+              outline: "none",
+              color: "var(--text)",
+              fontSize: "1rem",
+              fontFamily: "'Syne', sans-serif",
+            }}
+          />
+          <button
+            onClick={handleGo}
+            style={{
+              background: "var(--accent)",
+              color: "#000",
+              border: "none",
+              borderRadius: "10px",
+              padding: "10px 22px",
+              fontWeight: 700,
+              fontSize: "0.9rem",
+              cursor: "pointer",
+              whiteSpace: "nowrap",
+              transition: "opacity 0.15s",
+            }}
+          >
+            Go →
+          </button>
+        </div>
+
+        {/* quick links */}
+        <div>
+          <p style={{
+            color: "var(--muted)",
+            fontSize: "0.68rem",
+            fontFamily: "'JetBrains Mono', monospace",
+            textTransform: "uppercase",
+            letterSpacing: "1px",
+            marginBottom: "0.75rem",
+            textAlign: "center",
+          }}>
+            Quick Links
+          </p>
+          <div style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))",
+            gap: "8px",
+          }}>
+            {QUICK_LINKS.map(({ label, url, icon }) => (
+              <button
+                key={label}
+                onClick={() => openViaProxy(url)}
+                onMouseEnter={() => setHover(label)}
+                onMouseLeave={() => setHover(null)}
+                style={{
+                  background: hover === label ? "var(--surface2)" : "var(--surface)",
+                  border: `1px solid ${hover === label ? "var(--accent)" : "var(--border)"}`,
+                  borderRadius: "10px",
+                  padding: "12px",
+                  color: hover === label ? "var(--accent)" : "var(--muted)",
+                  cursor: "pointer",
+                  fontSize: "0.85rem",
+                  fontWeight: 600,
+                  transition: "all 0.15s",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                  fontFamily: "'Syne', sans-serif",
+                }}
+              >
+                <span>{icon}</span>
+                <span>{label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* note */}
+        <p style={{
+          marginTop: "2rem",
+          textAlign: "center",
+          color: "var(--muted)",
+          fontSize: "0.72rem",
+          fontFamily: "'JetBrains Mono', monospace",
+        }}>
+          make sure pop-ups are allowed for this site
         </p>
       </div>
-
-      <div style={{ position: "relative", maxWidth: "380px", marginBottom: "1.25rem" }}>
-        <input
-          type="text"
-          placeholder="Search games or tags..."
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          style={{
-            width: "100%", padding: "10px 14px",
-            background: "var(--surface)", border: "1px solid var(--border)",
-            borderRadius: "10px", color: "var(--text)", fontSize: "0.9rem",
-            outline: "none", fontFamily: "'Syne', sans-serif",
-          }}
-          onFocus={e => (e.target.style.borderColor = "var(--accent)")}
-          onBlur={e  => (e.target.style.borderColor = "var(--border)")}
-        />
-      </div>
-
-      <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", marginBottom: "2rem" }}>
-        {ALL_TAGS.map(tag => (
-          <button key={tag} onClick={() => setActiveTag(tag)} style={{
-            padding: "4px 12px", borderRadius: "6px",
-            border: activeTag === tag ? "1px solid var(--accent)" : "1px solid var(--border)",
-            background: activeTag === tag ? "rgba(0,229,255,0.12)" : "var(--surface)",
-            color: activeTag === tag ? "var(--accent)" : "var(--muted)",
-            fontSize: "0.68rem", fontFamily: "'JetBrains Mono', monospace",
-            textTransform: "uppercase", letterSpacing: "0.6px",
-            cursor: "pointer", transition: "all 0.15s",
-          }}>
-            {tag}
-          </button>
-        ))}
-      </div>
-
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: "1.1rem" }}>
-        {filtered.map(game => <GameCard key={game.id} game={game} />)}
-      </div>
-
-      {filtered.length === 0 && (
-        <div style={{ textAlign: "center", marginTop: "5rem", color: "var(--muted)" }}>
-          No games match "{search}"
-        </div>
-      )}
     </main>
-  );
-}
-
-// ─── Game card ────────────────────────────────────────────────────────────────
-function GameCard({ game }) {
-  const [hover, setHover] = useState(false);
-
-  return (
-    <div
-      style={{
-        background: "var(--surface)",
-        border: `1px solid ${hover ? "var(--accent)" : "var(--border)"}`,
-        borderRadius: "var(--card-radius)", overflow: "hidden",
-        transition: "all 0.18s",
-        transform: hover ? "translateY(-3px)" : "translateY(0)",
-        boxShadow: hover ? "0 8px 30px rgba(0,229,255,0.12)" : "none",
-        cursor: "pointer",
-      }}
-      onMouseEnter={() => setHover(true)}
-      onMouseLeave={() => setHover(false)}
-    >
-      <div style={{ position: "relative", aspectRatio: "16/10", background: "var(--surface2)", overflow: "hidden" }}>
-        <img
-          src={game.image} alt={game.name}
-          style={{
-            width: "100%", height: "100%", objectFit: "cover", display: "block",
-            transform: hover ? "scale(1.05)" : "scale(1)", transition: "transform 0.3s",
-          }}
-          onError={e => { e.target.style.display = "none"; }}
-        />
-        <div style={{
-          position: "absolute", inset: 0, background: "rgba(7,8,15,0.85)",
-          display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-          gap: "8px", opacity: hover ? 1 : 0, transition: "opacity 0.2s",
-        }}>
-          <button
-            onClick={e => { e.stopPropagation(); openViaProxy(game.url, game.name); }}
-            style={{
-              background: "var(--accent)", color: "#000", border: "none",
-              borderRadius: "8px", padding: "8px 20px", fontWeight: 700,
-              fontSize: "0.82rem", cursor: "pointer", width: "140px",
-            }}>
-            ▶ Play Here
-          </button>
-          <button
-            onClick={e => { e.stopPropagation(); openViaProxy(game.url, game.name); }}
-            style={{
-              background: "transparent", color: "var(--text)",
-              border: "1px solid var(--border)", borderRadius: "8px",
-              padding: "7px 20px", fontWeight: 600, fontSize: "0.82rem",
-              cursor: "pointer", width: "140px",
-            }}>
-            ↗ New Tab
-          </button>
-        </div>
-      </div>
-
-      <div style={{ padding: "10px 12px" }}>
-        <div style={{ fontWeight: 700, fontSize: "0.92rem", marginBottom: "6px" }}>{game.name}</div>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: "4px" }}>
-          {game.tags.map(tag => (
-            <span key={tag} style={{
-              fontSize: "0.62rem", background: "var(--surface2)", color: "var(--muted)",
-              padding: "2px 7px", borderRadius: "5px", textTransform: "uppercase",
-              letterSpacing: "0.6px", fontFamily: "'JetBrains Mono', monospace",
-            }}>{tag}</span>
-          ))}
-        </div>
-      </div>
-    </div>
   );
 }
