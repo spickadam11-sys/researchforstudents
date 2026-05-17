@@ -37,59 +37,88 @@ iframe{width:100%;height:100%;border:none;display:block}
 <div id="load">
   <div class="ring"></div>
   <span id="msg">Connecting to proxy...</span>
-  <span id="sub">this may take ~20s if the proxy is waking up</span>
+  <span id="sub">This might take 30-50s if the free proxy is waking up</span>
 </div>
 <button id="x" onclick="window.close()">✕ Close</button>
 <iframe id="f" style="display:none" allowfullscreen></iframe>
-<script src="${PROXY_BASE}/uv/uv.bundle.js"></script>
-<script src="${PROXY_BASE}/uv/uv.config.js"></script>
+
 <script>
 var TARGET = ${JSON.stringify(url)};
 var PROXY  = ${JSON.stringify(PROXY_BASE)};
 var done   = false;
-var elapsed = 0;
+var retries = 0;
+var maxRetries = 20; // Will try 20 times, allowing ~50 seconds for Render to wake up
 
-var ticker = setInterval(function() {
-  elapsed++;
-  if (elapsed === 5)  document.getElementById('msg').textContent = 'Still connecting...';
-  if (elapsed === 10) document.getElementById('msg').textContent = 'Proxy is waking up...';
-  if (elapsed === 20) document.getElementById('msg').textContent = 'Almost there...';
-}, 1000);
-
-function showGame() {
-  clearInterval(ticker);
-  document.getElementById('load').style.display = 'none';
-  document.getElementById('f').style.display = 'block';
+function fallback(reason) {
+  if (done) return; done = true;
+  document.getElementById('msg').textContent = 'Opening directly...';
+  document.getElementById('sub').textContent = 'Proxy unavailable: ' + reason;
+  setTimeout(function() { window.location.href = TARGET; }, 1500);
 }
 
-function fallback() {
-  if (done) return; done = true;
-  clearInterval(ticker);
-  document.getElementById('msg').textContent = 'Opening directly...';
-  document.getElementById('sub').textContent = 'proxy unavailable';
-  setTimeout(function() { window.location.href = TARGET; }, 800);
+function showGame() {
+  var loadEl = document.getElementById('load');
+  if (loadEl) loadEl.style.display = 'none';
+  document.getElementById('f').style.display = 'block';
 }
 
 function launch() {
   if (done) return;
   try {
     var cfg = window.__uv$config;
-    if (!cfg || !cfg.encodeUrl) { fallback(); return; }
+    if (!cfg || !cfg.encodeUrl) { fallback('Config missing'); return; }
     done = true;
     var encoded = PROXY + cfg.prefix + cfg.encodeUrl(TARGET);
     var f = document.getElementById('f');
-    document.getElementById('msg').textContent = 'Loading...';
+    document.getElementById('msg').textContent = 'Loading game...';
     document.getElementById('sub').textContent = '';
     f.src = encoded;
-    setTimeout(showGame, 2500);
-  } catch(e) { fallback(); }
+    setTimeout(showGame, 2000);
+  } catch(e) {
+    fallback('Launch error');
+  }
 }
 
-if (document.readyState === 'complete') launch();
-else window.addEventListener('load', launch);
+function loadBundle() {
+  var s1 = document.createElement('script');
+  s1.src = PROXY + '/uv/uv.bundle.js';
+  s1.onload = launch;
+  s1.onerror = function() { fallback('Bundle failed'); };
+  document.body.appendChild(s1);
+}
 
-// Give Render 35 seconds to cold-start before giving up
-setTimeout(function(){ if (!done) fallback(); }, 35000);
+function checkProxy() {
+  if (done) return;
+  if (retries > 0) {
+    document.getElementById('msg').textContent = 'Waking up proxy (Attempt ' + retries + '/' + maxRetries + ')...';
+  }
+
+  var s2 = document.createElement('script');
+  // Cache bust to ensure we actually hit the Render server and don't get a cached error page
+  s2.src = PROXY + '/uv/uv.config.js?t=' + Date.now();
+  s2.onload = function() {
+    // If Render returned an HTML error page, the script "loads" but __uv$config won't exist
+    if (window.__uv$config) {
+      loadBundle(); // Proxy is fully awake!
+    } else {
+      retry();
+    }
+  };
+  s2.onerror = retry;
+  document.body.appendChild(s2);
+}
+
+function retry() {
+  retries++;
+  if (retries >= maxRetries) {
+    fallback('Timeout');
+  } else {
+    setTimeout(checkProxy, 2500); // Wait 2.5 seconds before pinging again
+  }
+}
+
+// Start the polling cycle
+window.onload = checkProxy;
 </script>
 </body></html>`);
   win.document.close();
