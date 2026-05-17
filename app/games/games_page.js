@@ -26,8 +26,8 @@ iframe{width:100%;height:100%;border:none;display:block}
 .ring{width:40px;height:40px;border:3px solid #1a1a2e;border-top-color:#00e5ff;
       border-radius:50%;animation:spin 0.75s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
-#msg{font-size:0.82rem;color:#555;letter-spacing:0.5px}
-#sub{font-size:0.72rem;color:#333;margin-top:-6px}
+#msg{font-size:0.82rem;color:#fff;letter-spacing:0.5px}
+#sub{font-size:0.72rem;color:#555;margin-top:-6px}
 #x{position:fixed;top:10px;right:10px;z-index:9999;background:rgba(0,0,0,.75);
    color:#fff;border:1px solid #333;border-radius:8px;padding:5px 14px;
    cursor:pointer;font:13px sans-serif}
@@ -37,7 +37,7 @@ iframe{width:100%;height:100%;border:none;display:block}
 <div id="load">
   <div class="ring"></div>
   <span id="msg">Connecting to proxy...</span>
-  <span id="sub">This might take 30-50s if the free proxy is waking up</span>
+  <span id="sub">this may take ~20s if the proxy is waking up</span>
 </div>
 <button id="x" onclick="window.close()">✕ Close</button>
 <iframe id="f" style="display:none" allowfullscreen></iframe>
@@ -46,17 +46,29 @@ iframe{width:100%;height:100%;border:none;display:block}
 var TARGET = ${JSON.stringify(url)};
 var PROXY  = ${JSON.stringify(PROXY_BASE)};
 var done   = false;
-var retries = 0;
-var maxRetries = 20; // Will try 20 times, allowing ~50 seconds for Render to wake up
+var elapsed = 0;
+var maxWaitSeconds = 45; // Give it a long patience window
 
-function fallback(reason) {
+var ticker = setInterval(function() {
+  elapsed++;
+  if (elapsed === 5)  document.getElementById('msg').textContent = 'Still connecting...';
+  if (elapsed === 12) document.getElementById('msg').textContent = 'Proxy is waking up...';
+  if (elapsed === 22) document.getElementById('msg').textContent = 'Almost there...';
+  if (elapsed >= maxWaitSeconds) {
+    fallback();
+  }
+}, 1000);
+
+function fallback() {
   if (done) return; done = true;
+  clearInterval(ticker);
   document.getElementById('msg').textContent = 'Opening directly...';
-  document.getElementById('sub').textContent = 'Proxy unavailable: ' + reason;
-  setTimeout(function() { window.location.href = TARGET; }, 1500);
+  document.getElementById('sub').textContent = 'proxy unavailable';
+  setTimeout(function() { window.location.href = TARGET; }, 1200);
 }
 
 function showGame() {
+  clearInterval(ticker);
   var loadEl = document.getElementById('load');
   if (loadEl) loadEl.style.display = 'none';
   document.getElementById('f').style.display = 'block';
@@ -66,7 +78,11 @@ function launch() {
   if (done) return;
   try {
     var cfg = window.__uv$config;
-    if (!cfg || !cfg.encodeUrl) { fallback('Config missing'); return; }
+    if (!cfg || !cfg.encodeUrl) { 
+      // If scripts parsed but config object isn't fully ready yet, wait and retry launch
+      setTimeout(launch, 1000); 
+      return; 
+    }
     done = true;
     var encoded = PROXY + cfg.prefix + cfg.encodeUrl(TARGET);
     var f = document.getElementById('f');
@@ -74,51 +90,27 @@ function launch() {
     document.getElementById('sub').textContent = '';
     f.src = encoded;
     setTimeout(showGame, 2000);
-  } catch(e) {
-    fallback('Launch error');
+  } catch(e) { 
+    fallback(); 
   }
 }
 
-function loadBundle() {
-  var s1 = document.createElement('script');
-  s1.src = PROXY + '/uv/uv.bundle.js';
-  s1.onload = launch;
-  s1.onerror = function() { fallback('Bundle failed'); };
-  document.body.appendChild(s1);
-}
-
-function checkProxy() {
-  if (done) return;
-  if (retries > 0) {
-    document.getElementById('msg').textContent = 'Waking up proxy (Attempt ' + retries + '/' + maxRetries + ')...';
-  }
-
-  var s2 = document.createElement('script');
-  // Cache bust to ensure we actually hit the Render server and don't get a cached error page
-  s2.src = PROXY + '/uv/uv.config.js?t=' + Date.now();
-  s2.onload = function() {
-    // If Render returned an HTML error page, the script "loads" but __uv$config won't exist
-    if (window.__uv$config) {
-      loadBundle(); // Proxy is fully awake!
-    } else {
-      retry();
-    }
+// Dynamically inject scripts to handle potential server spin-up latency safely
+function loadScripts() {
+  var b = document.createElement('script');
+  b.src = PROXY + '/uv/uv.bundle.js';
+  b.onload = function() {
+    var c = document.createElement('script');
+    c.src = PROXY + '/uv/uv.config.js?t=' + Date.now();
+    c.onload = launch;
+    c.onerror = function() { setTimeout(loadScripts, 3000); }; // loop-retry if server drops request
+    document.body.appendChild(c);
   };
-  s2.onerror = retry;
-  document.body.appendChild(s2);
+  b.onerror = function() { setTimeout(loadScripts, 3000); }; // loop-retry if server drops request
+  document.body.appendChild(b);
 }
 
-function retry() {
-  retries++;
-  if (retries >= maxRetries) {
-    fallback('Timeout');
-  } else {
-    setTimeout(checkProxy, 2500); // Wait 2.5 seconds before pinging again
-  }
-}
-
-// Start the polling cycle
-window.onload = checkProxy;
+window.onload = loadScripts;
 </script>
 </body></html>`);
   win.document.close();
