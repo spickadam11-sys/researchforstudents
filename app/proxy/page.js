@@ -3,8 +3,8 @@ import { useState, useRef } from "react";
 
 const PROXY_BASE = "https://proxy-scramjet.onrender.com";
 
-function openViaProxy(rawInput) {
-  let url = rawInput.trim();
+function openViaProxy(rawInput, title) {
+  let url = typeof rawInput === "string" ? rawInput.trim() : rawInput;
   if (!url) return;
   if (!url.includes(".") || url.includes(" ")) {
     url = "https://www.google.com/search?q=" + encodeURIComponent(url);
@@ -16,7 +16,7 @@ function openViaProxy(rawInput) {
   if (!win) { alert("Allow pop-ups for this site first."); return; }
 
   win.document.write(`<!DOCTYPE html><html><head>
-<title>Loading...</title>
+<title>${title || "Loading..."}</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{background:#07080f;color:#fff;font-family:sans-serif;width:100vw;height:100vh;overflow:hidden}
@@ -27,13 +27,18 @@ iframe{width:100%;height:100%;border:none;display:block}
       border-radius:50%;animation:spin 0.75s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 #msg{font-size:0.82rem;color:#555;letter-spacing:0.5px}
+#sub{font-size:0.72rem;color:#333;margin-top:-6px}
 #x{position:fixed;top:10px;right:10px;z-index:9999;background:rgba(0,0,0,.75);
    color:#fff;border:1px solid #333;border-radius:8px;padding:5px 14px;
    cursor:pointer;font:13px sans-serif}
 #x:hover{background:#1a1a1a}
 </style>
 </head><body>
-<div id="load"><div class="ring"></div><span id="msg">Connecting...</span></div>
+<div id="load">
+  <div class="ring"></div>
+  <span id="msg">Connecting to proxy...</span>
+  <span id="sub">this may take ~20s if the proxy is waking up</span>
+</div>
 <button id="x" onclick="window.close()">✕ Close</button>
 <iframe id="f" style="display:none" allowfullscreen></iframe>
 <script src="${PROXY_BASE}/uv/uv.bundle.js"></script>
@@ -42,16 +47,27 @@ iframe{width:100%;height:100%;border:none;display:block}
 var TARGET = ${JSON.stringify(url)};
 var PROXY  = ${JSON.stringify(PROXY_BASE)};
 var done   = false;
+var elapsed = 0;
+
+var ticker = setInterval(function() {
+  elapsed++;
+  if (elapsed === 5)  document.getElementById('msg').textContent = 'Still connecting...';
+  if (elapsed === 10) document.getElementById('msg').textContent = 'Proxy is waking up...';
+  if (elapsed === 20) document.getElementById('msg').textContent = 'Almost there...';
+}, 1000);
 
 function showGame() {
+  clearInterval(ticker);
   document.getElementById('load').style.display = 'none';
   document.getElementById('f').style.display = 'block';
 }
 
 function fallback() {
   if (done) return; done = true;
+  clearInterval(ticker);
   document.getElementById('msg').textContent = 'Opening directly...';
-  window.location.href = TARGET;
+  document.getElementById('sub').textContent = 'proxy unavailable';
+  setTimeout(function() { window.location.href = TARGET; }, 800);
 }
 
 function launch() {
@@ -63,16 +79,17 @@ function launch() {
     var encoded = PROXY + cfg.prefix + cfg.encodeUrl(TARGET);
     var f = document.getElementById('f');
     document.getElementById('msg').textContent = 'Loading...';
+    document.getElementById('sub').textContent = '';
     f.src = encoded;
-    // Force show after 2.5s — UV does client-side nav so onload is unreliable
     setTimeout(showGame, 2500);
   } catch(e) { fallback(); }
 }
 
 if (document.readyState === 'complete') launch();
 else window.addEventListener('load', launch);
-// Hard fallback if UV scripts never load
-setTimeout(function(){ if (!done) fallback(); }, 8000);
+
+// Give Render 35 seconds to cold-start before giving up
+setTimeout(function(){ if (!done) fallback(); }, 35000);
 </script>
 </body></html>`);
   win.document.close();
