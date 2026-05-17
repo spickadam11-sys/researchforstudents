@@ -32,32 +32,51 @@ iframe{width:100%;height:100%;border:none;display:block}
    color:#fff;border:1px solid #333;border-radius:8px;padding:5px 14px;
    cursor:pointer;font:13px sans-serif}
 #x:hover{background:#1a1a1a}
+#err{display:none;flex-direction:column;align-items:center;gap:10px;text-align:center}
+#err p{color:#ff3cac;font-size:0.85rem}
+#err small{color:#555;font-size:0.72rem}
+#retry-btn{background:#00e5ff;color:#000;border:none;border-radius:8px;
+           padding:8px 20px;font-weight:700;cursor:pointer;font-size:0.85rem}
 </style>
 </head><body>
 <div id="load">
-  <div class="ring"></div>
+  <div id="spinner-wrap">
+    <div class="ring"></div>
+  </div>
   <span id="msg">Connecting to proxy...</span>
-  <span id="sub">waking up the server (this may take up to a minute)</span>
+  <span id="sub">checking server status...</span>
+  <div id="err">
+    <p>Could not connect to proxy server.</p>
+    <small>The server may be down or unreachable.</small>
+    <button id="retry-btn" onclick="startFresh()">Try Again</button>
+  </div>
 </div>
 <button id="x" onclick="window.close()">✕ Close</button>
 <iframe id="f" style="display:none" allowfullscreen></iframe>
 
 <script>
-var TARGET = ${JSON.stringify(url)};
-var PROXY  = ${JSON.stringify(PROXY_BASE)};
-var done   = false;
-var elapsed = 0;
+var TARGET  = ${JSON.stringify(url)};
+var PROXY   = ${JSON.stringify(PROXY_BASE)};
+var done    = false;
+var retries = 0;
+var MAX_RETRIES = 5;
 
-var ticker = setInterval(function() {
-  elapsed++;
-  if (elapsed === 5)  document.getElementById('msg').textContent = 'Still connecting...';
-  if (elapsed === 15) document.getElementById('msg').textContent = 'Proxy is waking up...';
-  if (elapsed === 30) document.getElementById('msg').textContent = 'Render instances take up to 60s to boot...';
-  if (elapsed === 45) document.getElementById('msg').textContent = 'Almost there, holding connection open...';
-}, 1000);
+function setMsg(msg, sub) {
+  var m = document.getElementById('msg');
+  var s = document.getElementById('sub');
+  if (m && msg !== undefined) m.textContent = msg;
+  if (s && sub !== undefined) s.textContent = sub;
+}
+
+function showError() {
+  var spinner = document.getElementById('spinner-wrap');
+  var err = document.getElementById('err');
+  if (spinner) spinner.style.display = 'none';
+  if (err) err.style.display = 'flex';
+  setMsg('Connection failed', '');
+}
 
 function showGame() {
-  clearInterval(ticker);
   var loadEl = document.getElementById('load');
   if (loadEl) loadEl.style.display = 'none';
   document.getElementById('f').style.display = 'block';
@@ -65,57 +84,112 @@ function showGame() {
 
 function launch() {
   if (done) return;
-  try {
-    var cfg = window.__uv$config;
-    // If Render returned a waking-up error page, config object won't exist
-    if (!cfg || !cfg.encodeUrl) { 
-      setTimeout(loadScripts, 3000); 
-      return; 
+  // Small delay to ensure uv.config.js has fully executed and set window.__uv$config
+  setTimeout(function() {
+    try {
+      var cfg = window.__uv$config;
+      if (!cfg || !cfg.encodeUrl || !cfg.prefix) {
+        // Config not ready yet — retry script loading if under limit
+        scheduleRetry('Config not ready, retrying...');
+        return;
+      }
+      done = true;
+      var encoded = PROXY + cfg.prefix + cfg.encodeUrl(TARGET);
+      var f = document.getElementById('f');
+      setMsg('Loading proxy session...', '');
+      f.src = encoded;
+      setTimeout(showGame, 2000);
+    } catch(e) {
+      scheduleRetry('Error initializing, retrying...');
     }
-    done = true;
-    var encoded = PROXY + cfg.prefix + cfg.encodeUrl(TARGET);
-    var f = document.getElementById('f');
-    document.getElementById('msg').textContent = 'Loading proxy session...';
-    document.getElementById('sub').textContent = '';
-    f.src = encoded;
-    setTimeout(showGame, 2000);
-  } catch(e) { 
-    setTimeout(loadScripts, 3000);
+  }, 300); // 300ms grace period after script load
+}
+
+function scheduleRetry(msg) {
+  retries++;
+  if (retries >= MAX_RETRIES) {
+    showError();
+    return;
   }
+  setMsg(msg || 'Retrying...', 'attempt ' + retries + ' of ' + MAX_RETRIES);
+  setTimeout(loadScripts, 2000);
 }
 
 function loadScripts() {
   if (done) return;
-  
-  // Clean out any old script attempts from the document body
-  var oldScripts = document.querySelectorAll('.uv-script');
-  oldScripts.forEach(function(el) { el.remove(); });
 
-  var b = document.createElement('script');
-  b.className = 'uv-script';
-  b.src = PROXY + '/uv/uv.bundle.js?t=' + Date.now();
-  
-  b.onload = function() {
-    var c = document.createElement('script');
-    c.className = 'uv-script';
-    c.src = PROXY + '/uv/uv.config.js?t=' + Date.now();
-    c.onload = launch;
-    c.onerror = function() { setTimeout(loadScripts, 3000); };
-    document.body.appendChild(c);
+  // Remove any previous script attempts
+  document.querySelectorAll('.uv-script').forEach(function(el) { el.remove(); });
+
+  var bundle = document.createElement('script');
+  bundle.className = 'uv-script';
+  bundle.src = PROXY + '/uv/uv.bundle.js?t=' + Date.now();
+
+  bundle.onload = function() {
+    var config = document.createElement('script');
+    config.className = 'uv-script';
+    config.src = PROXY + '/uv/uv.config.js?t=' + Date.now();
+    config.onload = launch;
+    config.onerror = function() { scheduleRetry('Config script failed, retrying...'); };
+    document.body.appendChild(config);
   };
-  
-  b.onerror = function() { 
-    setTimeout(loadScripts, 3000); // Try again in 3 seconds if proxy is offline
+
+  bundle.onerror = function() {
+    scheduleRetry('Bundle script failed, retrying...');
   };
-  
-  document.body.appendChild(b);
+
+  document.body.appendChild(bundle);
 }
 
-window.onload = loadScripts;
+function startFresh() {
+  // Reset state for manual retry
+  done = false;
+  retries = 0;
+  var spinner = document.getElementById('spinner-wrap');
+  var err = document.getElementById('err');
+  if (spinner) spinner.style.display = 'block';
+  if (err) err.style.display = 'none';
+  setMsg('Reconnecting...', 'pinging server...');
+  pingAndLoad();
+}
+
+function pingAndLoad() {
+  // Fetch the proxy health endpoint first to confirm the server is awake.
+  // This avoids loading scripts against a sleeping/cold server.
+  setMsg('Connecting to proxy...', 'pinging server...');
+
+  fetch(PROXY + '/uv/uv.bundle.js', { method: 'HEAD', cache: 'no-store' })
+    .then(function(res) {
+      if (res.ok) {
+        setMsg('Server is up!', 'loading proxy scripts...');
+        loadScripts();
+      } else {
+        // Server responded but with an error — still try loading
+        setMsg('Server responded, loading...', '');
+        loadScripts();
+      }
+    })
+    .catch(function() {
+      // Server not reachable yet — wait and retry ping
+      if (retries >= MAX_RETRIES) { showError(); return; }
+      retries++;
+      var wait = retries < 3 ? 3 : 5;
+      setMsg(
+        retries < 2 ? 'Waking up server...' :
+        retries < 4 ? 'Still starting up...' : 'Almost there...',
+        'retry ' + retries + ' of ' + MAX_RETRIES + ' — waiting ' + wait + 's'
+      );
+      setTimeout(pingAndLoad, wait * 1000);
+    });
+}
+
+// Kick off with a health ping instead of blindly loading scripts
+window.onload = pingAndLoad;
 </script>
 </body></html>`);
   win.document.close();
 }
+
 const QUICK_LINKS = [
   { label: "Google",    url: "https://www.google.com",    icon: "🔍" },
   { label: "YouTube",   url: "https://www.youtube.com",   icon: "▶️" },
