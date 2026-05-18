@@ -19,7 +19,10 @@ function openViaProxy(rawInput, title) {
   } else if (!/^https?:\/\//i.test(url)) {
     url = "https://" + url;
   }
-  window.open(PROXY_BASE + "/?link=" + uvEncode(url), "_blank");
+  window.open(
+    "https://incognito-production-7ded.up.railway.app/?link=" + uvEncode(url),
+    "_blank"
+  );
 }
 
 const GAMES = [
