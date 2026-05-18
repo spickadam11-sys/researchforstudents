@@ -12,7 +12,7 @@ export default function ProxyPage() {
       height: "calc(100vh - 58px)",
     }}>
       <iframe
-        src="https://incognito-production-7ded.up.railway.app/"
+        src="incognito-production-7b03.up.railway.app/"
         style={{
           width: "100%",
           height: "100%",

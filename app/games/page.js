@@ -1,7 +1,7 @@
 "use client";
 import { useState, useMemo } from "react";
 
-const PROXY_BASE = "https://incognito-production-7ded.up.railway.app";
+const PROXY_BASE = "incognito-production-7b03.up.railway.app";
 const UV_PREFIX  = "/~/uv/";
 
 // Matches the encodeUrl function in uv.config.js
@@ -20,7 +20,7 @@ function openViaProxy(rawInput, title) {
     url = "https://" + url;
   }
   window.open(
-    "https://incognito-production-7ded.up.railway.app/?link=" + uvEncode(url),
+    "incognito-production-7b03.up.railway.app/?link=" + uvEncode(url),
     "_blank"
   );
 }
